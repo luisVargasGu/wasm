@@ -7,7 +7,44 @@ import viteLogo from "/vite.svg";
 function App() {
   const [notifications, setNotifications] = useState<string[]>([]);
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        processImage(base64.split(",")[1]);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const processImage = async (base64: string) => {
+    const binaryString = window.atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    const result = await (window as any).applyGrayscale(bytes);
+    const processedBase64 = window.btoa(
+      new Uint8Array(result).reduce(
+        (data, byte) => data + String.fromCharCode(byte),
+        "",
+      ),
+    );
+    setImageSrc(`data:image/jpeg;base64,${processedBase64}`);
+  };
+
+  // useEffect(() => {
+  //   const initWasm = async () => {
+  //     await loadWasm();
+  //   };
+  //   initWasm();
+  // });
   useEffect(() => {
     const initWasm = async () => {
       await loadWasm();
@@ -73,6 +110,9 @@ function App() {
         <button onClick={() => sendMessage("unimportant")}>
           Send Unimportant Message
         </button>
+        <h1>Image Processing with WASM</h1>
+        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        {imageSrc && <img src={imageSrc} alt="Processed" />}
       </div>
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
