@@ -1,4 +1,5 @@
 import { useState } from "react";
+import fhirImageComposer from "./fhirImageComposer";
 import "./App.css";
 
 function App() {
@@ -15,12 +16,15 @@ function App() {
     if (file) {
       const socket = new WebSocket("ws://localhost:8080/ws");
       const image = await readImage(file);
-      console.log({image: _arrayBufferToBase64(image)});
+      console.log(_arrayBufferToBase64(image));
 
       socket.onopen = () => {
         const reader = new FileReader();
         reader.onload = function () {
-          socket.send(image);
+          const imageString = _arrayBufferToBase64(image);
+          const fhirMediaResource = fhirImageComposer(imageString);
+          const payload = JSON.stringify(fhirMediaResource);
+          socket.send(payload);
         };
       };
 
