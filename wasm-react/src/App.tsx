@@ -1,9 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import fhirImageComposer from "./fhirImageComposer";
 import "./App.css";
+
+/*
+ * To decode the image from the console output
+ * go to: https://base64.guru/converter/decode/image 
+ */
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [prediction, setPrediction] = useState<string>("");
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  
+  useEffect(() => {
+    const _socket = new WebSocket("ws://localhost:8080/ws");
+    setSocket(_socket);
+
+    _socket.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      setPrediction(response.prediction);
+    };
+
+    _socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      _socket.close();
+    };
+  }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
@@ -12,29 +34,17 @@ function App() {
   };
 
   const handleUpload = async () => {
-    if (file) {
-      const socket = new WebSocket("ws://localhost:8080/ws");
+    if (file && socket !== null) {
+      const image = await readImage(file);
+      console.log(_arrayBufferToBase64(image));
 
-      socket.onopen = () => {
-        const reader = new FileReader();
-        reader.onload = function () {
-          if (reader.result) {
-            socket.send(reader.result);
-          }
-        };
-        reader.readAsArrayBuffer(file);
-      };
+      const imageString = _arrayBufferToBase64(image);
+      const fhirMediaResource = fhirImageComposer(imageString);
+      const payload = JSON.stringify(fhirMediaResource);
+      socket.send(payload);
 
-      socket.onmessage = (event) => {
-        const response = JSON.parse(event.data);
-        setPrediction(response.prediction);
-        socket.close();
-      };
-
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        socket.close();
-      };
+    } else {
+      throw new Error("Either no file could be read or socket has not been initialized");
     }
   };
 
@@ -54,3 +64,27 @@ function App() {
 }
 
 export default App;
+
+async function readImage(file: any): Promise<ArrayBuffer> {
+  return new Promise((res: any, rej: any) => {
+    console.log("Reading Image");
+    const reader = new FileReader();
+    reader.onload = function () {
+      if (!reader.result) {
+        rej("No image could be read");
+      }
+      res(reader.result);
+    };
+    reader.readAsArrayBuffer(file);
+  })
+}
+
+function _arrayBufferToBase64( buffer: ArrayBufferLike ) {
+  var binary = '';
+  var bytes = new Uint8Array( buffer );
+  var len = bytes.byteLength;
+  for (var i = 0; i < len; i++) {
+      binary += String.fromCharCode( bytes[ i ] );
+  }
+  return window.btoa( binary );
+}

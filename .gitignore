@@ -26,8 +26,15 @@ venv
 *.sw?
 
 # data
-brain_tumor_mris
-clf-data
+**/brain-tumor-mris
+**/clf-data
 
 # models
 *.p
+
+# additionals
+**/wasm
+*.zip
+*.p
+**/*yarn*
+**/*.ipynb_checkpoints
