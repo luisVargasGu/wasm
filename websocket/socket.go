@@ -1,9 +1,12 @@
 package main
 
 import (
-    "log"
-    "net/http"
-    "github.com/gorilla/websocket"
+	"bytes"
+	"io"
+	"log"
+	"net/http"
+    "mime/multipart"
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
@@ -21,21 +24,60 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
     defer conn.Close()
 
     for {
-        var message string
-        err := conn.ReadJSON(&message)
+        _ , p, err := conn.ReadMessage()
         if err != nil {
-            log.Println("Read error:", err)
-            break
+            log.Println(err)
+            return
         }
-        log.Println("Received:", message)
 
-        // Send raw data to the frontend for WASM processing
-        err = conn.WriteJSON(message)
+        // Call Python backend
+        response, err := callPythonBackend(p)
         if err != nil {
-            log.Println("Write error:", err)
-            break
+            log.Println(err)
+            return
+        }
+
+        if err := conn.WriteMessage(websocket.TextMessage, response); err != nil {
+            log.Println(err)
+            return
         }
     }
+}
+
+func callPythonBackend(data []byte) ([]byte, error) {
+	url := "http://localhost:5001/predict" // Your Python backend URL
+
+	// Create a buffer and a multipart writer
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+
+	// Create a form file field and write the data to it
+	part, err := writer.CreateFormFile("image", "upload.jpg")
+	if err != nil {
+		return nil, err
+	}
+	part.Write(data)
+	writer.Close()
+
+	req, err := http.NewRequest("POST", url, &buffer)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
 }
 
 func main() {

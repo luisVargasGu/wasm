@@ -24,3 +24,10 @@ venv
 *.njsproj
 *.sln
 *.sw?
+
+# data
+brain_tumor_mris
+clf-data
+
+# models
+*.p
