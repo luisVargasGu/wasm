@@ -31,6 +31,9 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         // Call Python backend
+		// THIS METHOD WILL FAIL
+		// YOU MUST EXTRACT THE BASE64 IMAGE FROM 'p.content.data'
+		// AND 
         response, err := callPythonBackend(p)
         if err != nil {
             log.Println(err)
