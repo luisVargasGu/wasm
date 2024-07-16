@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import fhirImageComposer from "./fhirImageComposer";
 import "./App.css";
 
@@ -10,6 +10,22 @@ import "./App.css";
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [prediction, setPrediction] = useState<string>("");
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  
+  useEffect(() => {
+    const _socket = new WebSocket("ws://localhost:8080/ws");
+    setSocket(_socket);
+
+    _socket.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      setPrediction(response.prediction);
+    };
+
+    _socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      _socket.close();
+    };
+  }, [])
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
@@ -18,28 +34,17 @@ function App() {
   };
 
   const handleUpload = async () => {
-    if (file) {
-      const socket = new WebSocket("ws://localhost:8080/ws");
+    if (file && socket !== null) {
       const image = await readImage(file);
       console.log(_arrayBufferToBase64(image));
 
-      socket.onopen = () => {
-        const imageString = _arrayBufferToBase64(image);
-        const fhirMediaResource = fhirImageComposer(imageString);
-        const payload = JSON.stringify(fhirMediaResource);
-        socket.send(payload);
-      };
+      const imageString = _arrayBufferToBase64(image);
+      const fhirMediaResource = fhirImageComposer(imageString);
+      const payload = JSON.stringify(fhirMediaResource);
+      socket.send(payload);
 
-      socket.onmessage = (event) => {
-        const response = JSON.parse(event.data);
-        setPrediction(response.prediction);
-        socket.close();
-      };
-
-      socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        socket.close();
-      };
+    } else {
+      throw new Error("Either no file could be read or socket has not been initialized");
     }
   };
 
