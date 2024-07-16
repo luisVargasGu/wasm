@@ -2,6 +2,11 @@ import { useState } from "react";
 import fhirImageComposer from "./fhirImageComposer";
 import "./App.css";
 
+/*
+ * To decode the image from the console output
+ * go to: https://base64.guru/converter/decode/image 
+ */
+
 function App() {
   const [file, setFile] = useState<File | null>(null);
   const [prediction, setPrediction] = useState<string>("");
@@ -19,13 +24,10 @@ function App() {
       console.log(_arrayBufferToBase64(image));
 
       socket.onopen = () => {
-        const reader = new FileReader();
-        reader.onload = function () {
-          const imageString = _arrayBufferToBase64(image);
-          const fhirMediaResource = fhirImageComposer(imageString);
-          const payload = JSON.stringify(fhirMediaResource);
-          socket.send(payload);
-        };
+        const imageString = _arrayBufferToBase64(image);
+        const fhirMediaResource = fhirImageComposer(imageString);
+        const payload = JSON.stringify(fhirMediaResource);
+        socket.send(payload);
       };
 
       socket.onmessage = (event) => {
