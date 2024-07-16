@@ -8,7 +8,6 @@ from cuml.model_selection import train_test_split
 from cuml.svm import SVC
 from sklearn.metrics import accuracy_score
 
-conda create -n rapids-24.06 -c rapidsai -c conda-forge -c nvidia rapids=24.06 python=3.9 cuda-version=12.0
 # prepare data
 input_dir = 'clf-data'
 categories = ['empty', 'not_empty']
