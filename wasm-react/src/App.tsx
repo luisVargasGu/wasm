@@ -14,15 +14,14 @@ function App() {
   const handleUpload = async () => {
     if (file) {
       const socket = new WebSocket("ws://localhost:8080/ws");
+      const image = await readImage(file);
+      console.log({image: _arrayBufferToBase64(image)});
 
       socket.onopen = () => {
         const reader = new FileReader();
         reader.onload = function () {
-          if (reader.result) {
-            socket.send(reader.result);
-          }
+          socket.send(image);
         };
-        reader.readAsArrayBuffer(file);
       };
 
       socket.onmessage = (event) => {
@@ -54,3 +53,27 @@ function App() {
 }
 
 export default App;
+
+async function readImage(file: any): Promise<ArrayBuffer> {
+  return new Promise((res: any, rej: any) => {
+    console.log("Reading Image");
+    const reader = new FileReader();
+    reader.onload = function () {
+      if (!reader.result) {
+        rej("No image could be read");
+      }
+      res(reader.result);
+    };
+    reader.readAsArrayBuffer(file);
+  })
+}
+
+function _arrayBufferToBase64( buffer: ArrayBufferLike ) {
+  var binary = '';
+  var bytes = new Uint8Array( buffer );
+  var len = bytes.byteLength;
+  for (var i = 0; i < len; i++) {
+      binary += String.fromCharCode( bytes[ i ] );
+  }
+  return window.btoa( binary );
+}
