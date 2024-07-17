@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import fhirImageComposer from "./fhirImageComposer";
 import "./App.css";
+import JsonViewer from './components/JsonViwer';
 
 /*
  * To decode the image from the console output
@@ -9,8 +10,8 @@ import "./App.css";
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
-  const [prediction, setPrediction] = useState<string>("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [fhirResource, setFhirResource] = useState(null);
   
   useEffect(() => {
     const _socket = new WebSocket("ws://localhost:8080/ws");
@@ -18,7 +19,7 @@ function App() {
 
     _socket.onmessage = (event) => {
       const response = JSON.parse(event.data);
-      setPrediction(response.prediction);
+      setFhirResource(response);
     };
 
     _socket.onerror = (error) => {
@@ -36,7 +37,6 @@ function App() {
   const handleUpload = async () => {
     if (file && socket !== null) {
       const image = await readImage(file);
-      console.log(_arrayBufferToBase64(image));
 
       const imageString = _arrayBufferToBase64(image);
       const fhirMediaResource = fhirImageComposer(imageString);
@@ -53,10 +53,10 @@ function App() {
       <h1>Image Classifier</h1>
       <input type="file" accept="image/*" onChange={handleFileChange} />
       <button onClick={handleUpload}>Upload</button>
-      {prediction && (
+      {fhirResource && (
         <div>
           <h2>Prediction:</h2>
-          <p>{prediction}</p>
+          {fhirResource && <JsonViewer jsonData={fhirResource} />}
         </div>
       )}
     </div>
